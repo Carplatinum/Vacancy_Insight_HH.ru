@@ -1,43 +1,79 @@
 import requests
-from typing import List, Dict
+from typing import List, Dict, Optional
 
-class HHApi:
-    """Класс для работы с API hh.ru."""
 
-    BASE_URL = 'https://api.hh.ru'
+def fetch_vacancies_by_company(company_id: str) -> Optional[List[Dict]]:
+    """
+    Получить все вакансии компании с пагинацией из API hh.ru.
 
-    def get_company_vacancies(self, employer_id: str, per_page: int = 100) -> List[Dict]:
-        """
-        Получить список вакансий компании по её ID.
+    :param company_id: ID работодателя (employer_id) на hh.ru
+    :return: список вакансий (каждая — словарь) или None при ошибке
+    """
+    vacancies = []
+    page = 0
+    per_page = 100  # Максимум вакансий на страницу по API hh.ru
 
-        :param employer_id: ID работодателя
-        :param per_page: Количество вакансий на страницу (по умолчанию 100)
-        :return: Список словарей с вакансиями
-        """
-        vacancies: List[Dict] = []
-        page: int = 0
-        while True:
-            params = {
-                'employer_id': employer_id,
-                'page': page,
-                'per_page': per_page
-            }
-            response = requests.get(f'{self.BASE_URL}/vacancies', params=params)
+    while True:
+        url = f"https://api.hh.ru/vacancies"
+        params = {
+            'employer_id': company_id,
+            'page': page,
+            'per_page': per_page
+        }
+        try:
+            response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
-            data = response.json()
-            vacancies.extend(data['items'])
-            if page >= data['pages'] - 1:
-                break
-            page += 1
-        return vacancies
+        except requests.RequestException as e:
+            print(f"Ошибка запроса вакансий для компании {company_id}: {e}")
+            return None
 
-    def get_employer(self, employer_id: str) -> Dict:
-        """
-        Получить информацию о работодателе по его ID.
+        data = response.json()
+        vacancies.extend(data.get('items', []))
 
-        :param employer_id: ID работодателя
-        :return: Словарь с информацией о работодателе
-        """
-        response = requests.get(f'{self.BASE_URL}/employers/{employer_id}')
-        response.raise_for_status()
-        return response.json()
+        if page >= data.get('pages', 0) - 1:
+            break
+        page += 1
+
+    return vacancies
+
+
+def fetch_companies_and_vacancies(companies: List[Dict[str, str]]) -> Dict[str, List[Dict]]:
+    """
+    Получить вакансии для списка компаний.
+
+    :param companies: список словарей с ключами 'id' и 'name'
+    :return: словарь {company_id: [вакансии]}
+    """
+    all_vacancies = {}
+    for company in companies:
+        print(f"Получаем вакансии для компании: {company['name']} (ID: {company['id']})")
+        vacancies = fetch_vacancies_by_company(company['id'])
+        if vacancies is not None:
+            all_vacancies[company['id']] = vacancies
+            print(f"Получено вакансий: {len(vacancies)}")
+        else:
+            all_vacancies[company['id']] = []
+            print(f"Не удалось получить вакансии для компании {company['name']}")
+    return all_vacancies
+
+
+if __name__ == "__main__":
+    companies = [
+        {"id": "3529", "name": "СБЕР"},
+        {"id": "117712", "name": "ГСП-2"},
+        {"id": "5599", "name": "Лаборатория Гемотест"},
+        {"id": "1655568", "name": "Пингвин"},
+        {"id": "913808", "name": "CarMoney"},
+        {"id": "1466637", "name": "Davines Russia"},
+        {"id": "3447886", "name": "Крекер"},
+        {"id": "3383990", "name": "Жёлтый слон"},
+        {"id": "1706785", "name": "Центр Афродита"},
+        {"id": "2949717", "name": "Кировский Шинный Завод"},
+    ]
+
+    vacancies_data = fetch_companies_and_vacancies(companies)
+
+    # Пример вывода количества вакансий для каждой компании
+    for company in companies:
+        count = len(vacancies_data.get(company['id'], []))
+        print(f"{company['name']}: {count} вакансий")
