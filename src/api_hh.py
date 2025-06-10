@@ -1,21 +1,25 @@
+from typing import Any, Dict, List, Optional, Union
+
 import requests
-from typing import List, Dict, Optional
 
 
-def fetch_vacancies_by_company(company_id: str) -> Optional[List[Dict]]:
+def fetch_vacancies_by_company(company_id: str) -> Optional[List[Dict[str, Any]]]:
     """
-    Получить все вакансии компании с пагинацией из API hh.ru.
+    Получает список вакансий для заданной компании с hh.ru.
 
-    :param company_id: ID работодателя (employer_id) на hh.ru
-    :return: список вакансий (каждая — словарь) или None при ошибке
+    Args:
+        company_id (str): Идентификатор компании hh.ru.
+
+    Returns:
+        Optional[List[Dict[str, Any]]]: Список вакансий или None при ошибке.
     """
-    vacancies = []
+    vacancies: List[Dict[str, Any]] = []
     page = 0
-    per_page = 100  # Максимум вакансий на страницу по API hh.ru
+    per_page = 100
 
     while True:
-        url = f"https://api.hh.ru/vacancies"
-        params = {
+        url = "https://api.hh.ru/vacancies"
+        params: Dict[str, Union[str, int]] = {
             'employer_id': company_id,
             'page': page,
             'per_page': per_page
@@ -24,7 +28,7 @@ def fetch_vacancies_by_company(company_id: str) -> Optional[List[Dict]]:
             response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
         except requests.RequestException as e:
-            print(f"Ошибка запроса вакансий для компании {company_id}: {e}")
+            print(f"Ошибка при запросе вакансий для компании {company_id}: {e}")
             return None
 
         data = response.json()
@@ -37,14 +41,17 @@ def fetch_vacancies_by_company(company_id: str) -> Optional[List[Dict]]:
     return vacancies
 
 
-def fetch_companies_and_vacancies(companies: List[Dict[str, str]]) -> Dict[str, List[Dict]]:
+def fetch_companies_and_vacancies(companies: List[Dict[str, str]]) -> Dict[str, List[Dict[str, Any]]]:
     """
-    Получить вакансии для списка компаний.
+    Получает вакансии для списка компаний.
 
-    :param companies: список словарей с ключами 'id' и 'name'
-    :return: словарь {company_id: [вакансии]}
+    Args:
+        companies (List[Dict[str, str]]): Список компаний с ключами 'id' и 'name'.
+
+    Returns:
+        Dict[str, List[Dict[str, Any]]]: Словарь с id компании как ключом и списком вакансий как значением.
     """
-    all_vacancies = {}
+    all_vacancies: Dict[str, List[Dict[str, Any]]] = {}
     for company in companies:
         print(f"Получаем вакансии для компании: {company['name']} (ID: {company['id']})")
         vacancies = fetch_vacancies_by_company(company['id'])
@@ -55,25 +62,3 @@ def fetch_companies_and_vacancies(companies: List[Dict[str, str]]) -> Dict[str, 
             all_vacancies[company['id']] = []
             print(f"Не удалось получить вакансии для компании {company['name']}")
     return all_vacancies
-
-
-if __name__ == "__main__":
-    companies = [
-        {"id": "3529", "name": "СБЕР"},
-        {"id": "117712", "name": "ГСП-2"},
-        {"id": "5599", "name": "Лаборатория Гемотест"},
-        {"id": "1655568", "name": "Пингвин"},
-        {"id": "913808", "name": "CarMoney"},
-        {"id": "1466637", "name": "Davines Russia"},
-        {"id": "3447886", "name": "Крекер"},
-        {"id": "3383990", "name": "Жёлтый слон"},
-        {"id": "1706785", "name": "Центр Афродита"},
-        {"id": "2949717", "name": "Кировский Шинный Завод"},
-    ]
-
-    vacancies_data = fetch_companies_and_vacancies(companies)
-
-    # Пример вывода количества вакансий для каждой компании
-    for company in companies:
-        count = len(vacancies_data.get(company['id'], []))
-        print(f"{company['name']}: {count} вакансий")
