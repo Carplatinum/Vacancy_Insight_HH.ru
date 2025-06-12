@@ -35,11 +35,11 @@ cd Vacancy_Insight_HH
 poetry install
 
 3. Создайте файл `.env` на основе `.env.example` и заполните параметры:
-DB_NAME=
-DB_USER=
-DB_PASSWORD=
-DB_HOST=localhost
-DB_PORT=5432
+DB_NAME=  
+DB_USER=  
+DB_PASSWORD=  
+DB_HOST=localhost  
+DB_PORT=5432  
 
 4. Запустите скрипт:
 poetry run python main.py
